@@ -2,6 +2,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Vector;
@@ -16,9 +18,17 @@ public class Main {
 
   public static void main(String[] args) {
     Vector<Thread> threads = new Vector<>();
+    StringBuilder sb = new StringBuilder();
 
-    JSONObject parser = new JSONObject(System.getProperty("user.dir"
-        + File.separator + "paths.json"));
+    try {
+      String directory = System.getProperty("user.dir") + File.separator
+          + "paths.json";
+      Files.lines(Paths.get(directory)).forEach(sb::append);
+    } catch (IOException ex) {
+      System.out.println(ex.getMessage());
+    }
+
+    JSONObject parser = new JSONObject(sb.toString());
     JSONArray paths = parser.getJSONArray("paths");
 
     for (int i = 0; i < paths.length(); i++) {
@@ -27,8 +37,8 @@ public class Main {
       String destination = currentPath.getString("destination");
       boolean placeInSub = currentPath.getBoolean("placeInSub");
 
-      source = source.replaceAll("/", File.separator);
-      destination = destination.replaceAll("/", File.separator);
+      source = source.replaceAll("//", File.separator);
+      destination = destination.replaceAll("//", File.separator);
 
       Watcher watcher = new Watcher(Paths.get(source), Paths.get(destination),
           placeInSub, WAIT_TIME, id++);
