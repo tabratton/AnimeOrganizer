@@ -13,10 +13,17 @@ public class Main {
   public static ArrayList<String> detected = new ArrayList<>();
   public static long id = 1;
   public static String prefix = "[%s - ID %d] %s thread: %s";
+  public static String regexChar;
 
   private static final int WAIT_TIME = 10_000;
 
   public static void main(String[] args) {
+    if (File.separator.equals("/")) {
+      regexChar = "/";
+    } else {
+      regexChar = "\\\\";
+    }
+
     Vector<Thread> threads = new Vector<>();
     StringBuilder sb = new StringBuilder();
 
@@ -37,8 +44,8 @@ public class Main {
       String destination = currentPath.getString("destination");
       boolean placeInSub = currentPath.getBoolean("placeInSub");
 
-      source = source.replaceAll("//", File.separator);
-      destination = destination.replaceAll("//", File.separator);
+      source = source.replaceAll("/", regexChar);
+      destination = destination.replaceAll("/", regexChar);
 
       Watcher watcher = new Watcher(Paths.get(source), Paths.get(destination),
           placeInSub, WAIT_TIME, id++);

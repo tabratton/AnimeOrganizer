@@ -24,20 +24,23 @@ public class Watcher implements Runnable {
   private String name;
 
   Watcher(Path source, Path dest, boolean placeInSubFolder, int wait, long id) {
+
+    this.placeInSubFolder = placeInSubFolder;
+    this.destination = dest;
+    this.source = source;
+    this.waitTime = wait;
+    this.id = id;
+    String[] elements = source.toString().split(Main.regexChar);
+    name = elements[elements.length - 1];
+
     try {
-      this.placeInSubFolder = placeInSubFolder;
       this.watcher = FileSystems.getDefault().newWatchService();
-      this.destination = dest;
-      this.source = source;
-      this.waitTime = wait;
-      this.id = id;
       this.source.register(this.watcher, StandardWatchEventKinds.ENTRY_CREATE);
-      String[] elements = source.toString().split(File.separator);
-      name = elements[elements.length - 1];
-      System.out.printf("Starting %s thread...%n", name);
     } catch (IOException ex) {
       System.out.println(ex.getMessage());
     }
+
+    System.out.printf("Starting %s thread...%n", name);
   }
 
   public void run() {
