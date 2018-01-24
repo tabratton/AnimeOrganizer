@@ -1,3 +1,4 @@
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -6,6 +7,8 @@ import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import static java.nio.file.StandardWatchEventKinds.OVERFLOW;
 
@@ -16,19 +19,22 @@ public class Watcher implements Runnable {
   private Path destination;
   private volatile boolean watching = false;
   private int waitTime;
-  private String id;
-  private String threadId;
+  private boolean placeInSubFolder;
+  private long id;
+  private String name;
 
-  Watcher(String folder, Path source, Path dest, int wait, long id) {
+  Watcher(Path source, Path dest, boolean placeInSubFolder, int wait, long id) {
     try {
-      this.id = folder;
+      this.placeInSubFolder = placeInSubFolder;
       this.watcher = FileSystems.getDefault().newWatchService();
       this.destination = dest;
       this.source = source;
       this.waitTime = wait;
+      this.id = id;
       this.source.register(this.watcher, StandardWatchEventKinds.ENTRY_CREATE);
-      this.threadId = String.format("[ID %d]", id);
-      System.out.printf("Starting %s thread...%n", this.id);
+      String[] elements = source.toString().split(File.separator);
+      name = elements[elements.length - 1];
+      System.out.printf("Starting %s thread...%n", name);
     } catch (IOException ex) {
       System.out.println(ex.getMessage());
     }
@@ -90,10 +96,11 @@ public class Watcher implements Runnable {
 
   private void createMover(Path filename, boolean isDirectory) {
     System.out.println();
-    System.out.printf("%s %s thread: %s found, moving to correct folder.%n",
-        this.threadId, this.id, filename);
-    Mover mover = new Mover(this.source, this.destination, filename, this.id,
-        this.waitTime, isDirectory, Main.id++);
+    String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
+    System.out.printf(Main.prefix, timeStamp, this.id, this.name,
+        filename + " found, moving to correct folder.%n");
+    Mover mover = new Mover(this.source, this.destination, filename,
+        this.placeInSubFolder, this.waitTime, isDirectory, Main.id++);
     Thread thread = new Thread(mover);
     thread.start();
   }
