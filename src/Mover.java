@@ -73,7 +73,7 @@ public class Mover implements Runnable {
 
     String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
     System.out.printf(Main.prefix, timeStamp, this.id, this.title, "Dest: "
-        + absoluteDest +".%n");
+        + absoluteDest +".\n");
     performMove(absoluteSrc, absoluteDest);
   }
 
@@ -95,7 +95,7 @@ public class Mover implements Runnable {
         String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
         System.err.printf(Main.prefix, timeStamp, this.id, this.title,
             filename + " has been deleted or cannot be found, stopping move"
-                + " thread.%n");
+                + " thread.\n");
         break;
       } catch (IOException ex) {
         if (this.alreadyTried) {
@@ -104,13 +104,13 @@ public class Mover implements Runnable {
         String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
         System.err.printf(Main.prefix, timeStamp, this.id, this.title,
             filename + " is currently being used by another process, waiting"
-                + " until it is not being used to move.%n");
+                + " until it is not being used to move.\n");
         this.alreadyTried = true;
         continue;
       }
       String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
       System.out.printf(Main.prefix, timeStamp, this.id, this.title,
-          filename + " moved successfully.%n");
+          filename + " moved successfully.\n");
       fileMoved = true;
       Main.moved.add(this.filename.toString());
     }
@@ -141,7 +141,7 @@ public class Mover implements Runnable {
       System.err.println(exc.getMessage());
       String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
       System.err.printf(Main.prefix, timeStamp, this.id, this.title,
-          "Thread stopped before moving file");
+          "Thread stopped before moving file\n");
     }
   }
 }

@@ -101,7 +101,7 @@ public class Watcher implements Runnable {
     System.out.println();
     String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
     System.out.printf(Main.prefix, timeStamp, this.id, this.name,
-        filename + " found, moving to correct folder.%n");
+        filename + " found, moving to correct folder.\n");
     Mover mover = new Mover(this.source, this.destination, filename,
         this.placeInSubFolder, this.waitTime, isDirectory, Main.id++);
     Thread thread = new Thread(mover);
