@@ -1,0 +1,15 @@
+{
+  "_comment": "Example paths file",
+  "paths": [
+    {
+      "source": "C:/example",
+      "destination": "D:/example",
+      "placeInSub": false
+    },
+    {
+      "source": "C:/example2",
+      "destination": "C:/example3",
+      "placeInSub": true
+    }
+  ]
+}
