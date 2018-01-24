@@ -9,7 +9,9 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
 public class Mover implements Runnable {
@@ -17,24 +19,24 @@ public class Mover implements Runnable {
   private Path source;
   private Path destination;
   private Path filename;
-  private String folderID;
   private int waitTime;
   private boolean fileMoved = false;
   private boolean alreadyTried = false;
   private boolean isDirectory;
+  private boolean placeInSubFolder;
   private String title;
-  private String threadId;
+  private long id;
 
-  public Mover(Path source, Path dest, Path filename, String
-      folderID, int wait, boolean isDirectory, long id) {
+  public Mover(Path source, Path dest, Path filename, boolean sub, int wait,
+               boolean isDirectory, long id) {
     this.source = source;
     this.destination = dest;
     this.filename = filename;
-    this.folderID = folderID;
+    this.placeInSubFolder = sub;
     this.waitTime = wait;
     this.isDirectory = isDirectory;
     this.title = getAnimeTitle(filename);
-    this.threadId = String.format("[ID %d]", id);
+    this.id = id;
   }
 
   private String getAnimeTitle(Path path) {
@@ -58,7 +60,8 @@ public class Mover implements Runnable {
   private void moveFile() {
     Path absoluteSrc = this.source.resolve(this.filename);
     Path absoluteDest;
-    if (folderID.equals("RSSFeed") && !isDirectory) {
+
+    if (placeInSubFolder && !isDirectory) {
       createFolder(this.destination + File.separator + title);
       absoluteDest = Paths.get(this.destination + File.separator
           + this.title + File.separator + this.filename);
@@ -68,8 +71,9 @@ public class Mover implements Runnable {
           + File.separator + this.filename);
     }
 
-    System.out.printf("%s %s thread: Dest: %s%n", this.threadId, this.title,
-        absoluteDest);
+    String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
+    System.out.printf(Main.prefix, timeStamp, this.id, this.title, "Dest: "
+        + absoluteDest +".%n");
     performMove(absoluteSrc, absoluteDest);
   }
 
@@ -88,22 +92,25 @@ public class Mover implements Runnable {
               .REPLACE_EXISTING);
         }
       } catch (NoSuchFileException ex) {
-        System.err.printf("%s %s thread: %s has been deleted or cannot be"
-                + " found, stopping move thread.%n", this.threadId, this.title,
-            this.filename);
+        String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
+        System.err.printf(Main.prefix, timeStamp, this.id, this.title,
+            filename + " has been deleted or cannot be found, stopping move"
+                + " thread.%n");
         break;
       } catch (IOException ex) {
         if (this.alreadyTried) {
           continue;
         }
-        System.err.printf("%s %s thread: %s is currently being used by another"
-                + " process, waiting until it is not being used to move.%n",
-            this.threadId, this.title, this.filename);
+        String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
+        System.err.printf(Main.prefix, timeStamp, this.id, this.title,
+            filename + " is currently being used by another process, waiting"
+                + " until it is not being used to move.%n");
         this.alreadyTried = true;
         continue;
       }
-      System.out.printf("%s %s thread: %s moved successfully.%n", this.threadId,
-          this.title, this.filename);
+      String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
+      System.out.printf(Main.prefix, timeStamp, this.id, this.title,
+          filename + " moved successfully.%n");
       fileMoved = true;
       Main.moved.add(this.filename.toString());
     }
@@ -132,8 +139,9 @@ public class Mover implements Runnable {
       Thread.sleep(this.waitTime);
     } catch (InterruptedException exc) {
       System.err.println(exc.getMessage());
-      System.err.printf("%s %s thread: Thread stopped before moving file.%n",
-          this.threadId, this.title);
+      String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
+      System.err.printf(Main.prefix, timeStamp, this.id, this.title,
+          "Thread stopped before moving file");
     }
   }
 }
