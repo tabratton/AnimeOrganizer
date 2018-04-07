@@ -19,7 +19,7 @@ and [@Vorror](https://github.com/Vorror), respectively.
 
 ## paths.json
 
-```
+```json
 {
    "paths": [
      {
