@@ -1,4 +1,11 @@
-import java.io.File;
+/*
+ * Copyright (c) 2018, Tyler Bratton
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
