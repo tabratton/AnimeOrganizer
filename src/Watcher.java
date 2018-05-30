@@ -44,7 +44,7 @@ public class Watcher implements Runnable {
       this.watcher = FileSystems.getDefault().newWatchService();
       this.source.register(this.watcher, StandardWatchEventKinds.ENTRY_CREATE);
     } catch (IOException ex) {
-      System.out.println(ex.getMessage());
+      System.err.println(ex.toString());
     }
 
     System.out.printf("Starting %s thread...%n", name);
@@ -78,6 +78,7 @@ public class Watcher implements Runnable {
         }
 
         // The filename is the context of the event.
+        @SuppressWarnings("unchecked")
         WatchEvent<Path> ev = (WatchEvent<Path>) event;
         Path filename = ev.context();
 
