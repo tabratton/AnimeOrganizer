@@ -21,98 +21,91 @@ import static java.nio.file.StandardWatchEventKinds.OVERFLOW;
 
 public class Watcher implements Runnable {
 
-  private WatchService watcher;
-  private Path source;
-  private Path destination;
-  private volatile boolean watching = false;
-  private int waitTime;
-  private boolean placeInSubFolder;
-  private long id;
-  private String name;
+	private WatchService watchService;
+	private Path source;
+	private Path destination;
+	private volatile boolean watching = false;
+	private int waitTime;
+	private boolean placeInSubFolder;
+	private String name;
 
-  Watcher(Path source, Path dest, boolean placeInSubFolder, int wait, long id) {
+	Watcher(Path source, Path dest, String name, boolean placeInSubFolder, int wait) {
 
-    this.placeInSubFolder = placeInSubFolder;
-    this.destination = dest;
-    this.source = source;
-    this.waitTime = wait;
-    this.id = id;
-    String[] elements = source.toString().split(Main.regexChar);
-    name = elements[elements.length - 1];
+		this.placeInSubFolder = placeInSubFolder;
+		this.destination = dest;
+		this.source = source;
+		this.waitTime = wait;
+		this.name = name;
 
-    try {
-      this.watcher = FileSystems.getDefault().newWatchService();
-      this.source.register(this.watcher, StandardWatchEventKinds.ENTRY_CREATE);
-    } catch (IOException ex) {
-      System.err.println(ex.toString());
-    }
+		try {
+			this.watchService = FileSystems.getDefault().newWatchService();
+			this.source.register(this.watchService, StandardWatchEventKinds.ENTRY_CREATE);
+		} catch (IOException ex) {
+			System.err.println(ex.toString());
+		}
 
-    System.out.printf("Starting %s thread...%n", name);
-  }
+		System.out.printf("Starting %s thread...%n", name);
+	}
 
-  public void run() {
-    startWatching();
-  }
+	public void run() {
+		startWatching();
+	}
 
-  private void startWatching() {
-    this.watching = true;
-    this.processEvents();
-  }
+	private void startWatching() {
+		this.watching = true;
+		this.processEvents();
+	}
 
-  private void processEvents() {
-    while (this.watching) {
-      WatchKey key;
+	private void processEvents() {
+		while (this.watching) {
+			WatchKey key;
 
-      // Wait for key to be signaled
-      try {
-        key = this.watcher.take();
-      } catch (InterruptedException x) {
-        return;
-      }
+			// Wait for key to be signaled
+			try {
+				key = this.watchService.take();
+			} catch (InterruptedException x) {
+				Thread.currentThread().interrupt();
+				return;
+			}
 
-      for (WatchEvent<?> event : key.pollEvents()) {
-        WatchEvent.Kind kind = event.kind();
+			for (WatchEvent<?> event : key.pollEvents()) {
+				var kind = event.kind();
 
-        if (kind == OVERFLOW) {
-          continue;
-        }
+				// The filename is the context of the event.
+				@SuppressWarnings("unchecked")
+				var ev = (WatchEvent<Path>) event;
+				var filename = ev.context();
 
-        // The filename is the context of the event.
-        @SuppressWarnings("unchecked")
-        WatchEvent<Path> ev = (WatchEvent<Path>) event;
-        Path filename = ev.context();
+				if (kind == OVERFLOW || Main.detected.contains(filename.toString())
+						|| filename.toString().contains(".lftp-pget-status")
+						|| filename.toString().contains("TeraCopy")) {
+					continue;
+				}
 
-        if (Main.detected.contains(filename.toString())
-            || filename.toString().contains(".lftp-pget-status")
-            || filename.toString().contains("TeraCopy")) {
-          continue;
-        }
+				// Determine whether the thing detected was a file or directory.
+				var child = this.source.resolve(filename);
+				var isDirectory = Files.isDirectory(child);
+				Main.detected.add(filename.toString());
+				createMover(filename, isDirectory);
+			}
 
-        // Determine whether the thing detected was a file or directory.
-        Path child = this.source.resolve(filename);
-        boolean isDirectory = Files.isDirectory(child);
-        Main.detected.add(filename.toString());
-        createMover(filename, isDirectory);
-      }
+			// Reset the key -- this step is critical if you want to receive
+			// further watch events. If the key is no longer valid, the directory
+			// is inaccessible so exit the loop.
+			var valid = key.reset();
+			if (!valid) {
+				break;
+			}
+		}
+	}
 
-      // Reset the key -- this step is critical if you want to receive
-      // further watch events. If the key is no longer valid, the directory
-      // is inaccessible so exit the loop.
-      boolean valid = key.reset();
-      if (!valid) {
-        break;
-      }
-    }
-  }
-
-  private void createMover(Path filename, boolean isDirectory) {
-    System.out.println();
-    String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
-    System.out.printf(Main.prefix, timeStamp, this.id, this.name,
-        filename + " found, moving to correct folder.\n");
-    Mover mover = new Mover(this.source, this.destination, filename,
-        this.placeInSubFolder, this.waitTime, isDirectory, Main.id++);
-    Thread thread = new Thread(mover);
-    thread.start();
-  }
+	private void createMover(Path filename, boolean isDirectory) {
+		System.out.println();
+		var timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
+		System.out.printf(Main.PREFIX, timeStamp, this.name, filename + " found, moving to correct folder.\n");
+		var mover = new Mover(this.source, this.destination, filename, this.placeInSubFolder, this.waitTime,
+				isDirectory);
+		var thread = new Thread(mover);
+		thread.start();
+	}
 }

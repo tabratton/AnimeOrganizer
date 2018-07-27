@@ -7,7 +7,6 @@
  */
 
 import com.dgtlrepublic.anitomyj.AnitomyJ;
-import com.dgtlrepublic.anitomyj.Element;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
@@ -20,136 +19,138 @@ import java.nio.file.StandardCopyOption;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.List;
 
 public class Mover implements Runnable {
 
-  private Path source;
-  private Path destination;
-  private Path filename;
-  private int waitTime;
-  private boolean fileMoved = false;
-  private boolean alreadyTried = false;
-  private boolean isDirectory;
-  private boolean placeInSubFolder;
-  private String title;
-  private long id;
+	private static final String DATE_FORMAT = "yyyy.MM.dd.HH.mm.ss";
+	private Path source;
+	private Path destination;
+	private Path filename;
+	private int waitTime;
+	private boolean fileMoved = false;
+	private boolean alreadyTried = false;
+	private boolean isDirectory;
+	private boolean placeInSubFolder;
+	private String title;
 
-  public Mover(Path source, Path dest, Path filename, boolean sub, int wait,
-               boolean isDirectory, long id) {
-    this.source = source;
-    this.destination = dest;
-    this.filename = filename;
-    this.placeInSubFolder = sub;
-    this.waitTime = wait;
-    this.isDirectory = isDirectory;
-    this.title = getAnimeTitle(filename);
-    this.id = id;
-  }
+	public Mover(Path source, Path dest, Path filename, boolean sub, int wait, boolean isDirectory) {
+		this.source = source;
+		this.destination = dest;
+		this.filename = filename;
+		this.placeInSubFolder = sub;
+		this.waitTime = wait;
+		this.isDirectory = isDirectory;
+		this.title = getAnimeTitle(filename);
+	}
 
-  private String getAnimeTitle(Path path) {
-    String filename = path.toString();
-    List<Element> elements = AnitomyJ.parse(filename);
-    String name = "";
-    for (Element element : elements) {
-      if (element.getCategory().name().equals("kElementAnimeTitle")) {
-        name = element.getValue();
-        break;
-      }
-    }
+	private String getAnimeTitle(Path path) {
+		var file = path.toString();
+		var elements = AnitomyJ.parse(file);
+		var name = elements.stream()
+				.filter(e -> e.getCategory().name().equals("kElementAnimeTitle"))
+				.findFirst();
 
-    return name;
-  }
+		return name.isPresent() ? name.get().getValue() : "";
+	}
 
-  public void run() {
-    moveFile();
-  }
+	public void run() {
+		var absoluteSrc = this.source.resolve(this.filename);
+		var absoluteDest = setupDestinationFolder();
+		performMove(absoluteSrc, absoluteDest);
+	}
 
-  private void moveFile() {
-    Path absoluteSrc = this.source.resolve(this.filename);
-    Path absoluteDest;
+	private Path setupDestinationFolder() {
+		Path absoluteDest;
 
-    if (placeInSubFolder && !isDirectory) {
-      createFolder(this.destination + File.separator + title);
-      absoluteDest = Paths.get(this.destination + File.separator
-          + this.title + File.separator + this.filename);
-    } else {
-      createFolder(this.destination.toString());
-      absoluteDest = Paths.get(this.destination.toString()
-          + File.separator + this.filename);
-    }
+		if (placeInSubFolder) {
+			createFolder(this.destination + File.separator + title);
+			absoluteDest = Paths.get(this.destination + File.separator + this.title + File.separator + this.filename);
+		} else {
+			createFolder(this.destination.toString());
+			absoluteDest = Paths.get(this.destination.toString() + File.separator + this.filename);
+		}
 
-    String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
-    System.out.printf(Main.prefix, timeStamp, this.id, this.title, "Dest: "
-        + absoluteDest +".\n");
-    performMove(absoluteSrc, absoluteDest);
-  }
+		var timeStamp = new SimpleDateFormat(DATE_FORMAT).format(new Date());
+		System.out.printf(Main.PREFIX, timeStamp, this.title, "Dest: " + absoluteDest + ".\n");
+		return absoluteDest;
+	}
 
-  private void performMove(Path source, Path destination) {
-    while (!this.fileMoved) {
-      sleep();
-      try {
-        if (isDownloading(source.toFile())) {
-          throw new IOException();
-        }
+	private void performMove(Path source, Path destination) {
+		while (!this.fileMoved) {
+			sleep();
+			try {
+				if (isDownloading(source.toFile())) {
+					throw new IOException();
+				}
 
-        if (isDirectory) {
-          FileUtils.copyDirectory(source.toFile(), destination.toFile());
-        } else {
-          Files.copy(source, destination, StandardCopyOption
-              .REPLACE_EXISTING);
-        }
-      } catch (NoSuchFileException ex) {
-        String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
-        System.err.printf(Main.prefix, timeStamp, this.id, this.title,
-            filename + " has been deleted or cannot be found, stopping move"
-                + " thread.\n");
-        break;
-      } catch (IOException ex) {
-        if (this.alreadyTried) {
-          continue;
-        }
-        String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
-        System.err.printf(Main.prefix, timeStamp, this.id, this.title,
-            filename + " is currently being used by another process, waiting"
-                + " until it is not being used to move.\n");
-        this.alreadyTried = true;
-        continue;
-      }
-      String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
-      System.out.printf(Main.prefix, timeStamp, this.id, this.title,
-          filename + " moved successfully.\n");
-      fileMoved = true;
-      Main.moved.add(this.filename.toString());
-    }
-  }
+				if (isDirectory) {
+					FileUtils.copyDirectory(source.toFile(), destination.toFile());
+				} else {
+					Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING);
+				}
 
-  private boolean isDownloading(File parent) {
-    if (parent.isDirectory() && parent.listFiles() != null) {
-      return Arrays.stream(parent.listFiles()).anyMatch(f -> f.toString()
-          .contains(".lftp"));
-    } else {
-      String test = parent.toString() + ".lftp-pget-status";
-      File testFile = new File(test);
-      return testFile.exists();
-    }
-  }
+			} catch (NoSuchFileException ex) {
+				var timeStamp = new SimpleDateFormat(DATE_FORMAT).format(new Date());
+				System.err.printf(Main.PREFIX, timeStamp, this.title, filename + " has been deleted or cannot be found,"
+						+ " stopping move thread.\n");
+				return;
+			} catch (IOException ex) {
+				if (!this.alreadyTried) {
+					var timeStamp = new SimpleDateFormat(DATE_FORMAT).format(new Date());
+					System.err.printf(Main.PREFIX, timeStamp, this.title, filename + " is currently being used by another"
+							+ " process, waiting until it is not being used to move.\n");
+					this.alreadyTried = true;
+				}
 
-  private void createFolder(String path) {
-    File destinationFolder = new File(path);
-    if (!destinationFolder.exists()) {
-      destinationFolder.mkdir();
-    }
-  }
+				continue;
+			}
 
-  private void sleep() {
-    try {
-      Thread.sleep(this.waitTime);
-    } catch (InterruptedException exc) {
-      System.err.println(exc.getMessage());
-      String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
-      System.err.printf(Main.prefix, timeStamp, this.id, this.title,
-          "Thread stopped before moving file\n");
-    }
-  }
+			fileMoved = true;
+		}
+
+		var timeStamp = new SimpleDateFormat(DATE_FORMAT).format(new Date());
+		System.out.printf(Main.PREFIX, timeStamp, this.title, filename + " moved successfully.\n");
+		Main.moved.add(this.filename.toString());
+	}
+
+	private boolean isDownloading(File current) {
+		if (current.isDirectory() && current.listFiles() != null) {
+			// Check each sub folder for downloading files as well.
+			Arrays.stream(current.listFiles())
+					.filter(File::isDirectory)
+					.forEach(folder -> isDownloading(folder));
+
+			return Arrays.stream(current.listFiles()).anyMatch(f -> f.toString().contains(".lftp"));
+		} else {
+			return new File(current.toString() + ".lftp-pget-status").exists();
+		}
+	}
+
+	private void createFolder(String path) {
+		var destinationFolder = new File(path);
+		if (!destinationFolder.exists()) {
+			try {
+				var result = destinationFolder.mkdir();
+				if (!result) {
+					throw new IOException("Could not create folder");
+				}
+			} catch (IOException ex) {
+				System.err.println(ex.getMessage());
+				var timeStamp = new SimpleDateFormat(DATE_FORMAT).format(new Date());
+				System.err.printf(Main.PREFIX, timeStamp, this.title, "Could not create folder, stopping thread\n");
+				Thread.currentThread().interrupt();
+			}
+		}
+	}
+
+	private void sleep() {
+		try {
+			Thread.sleep(this.waitTime);
+		} catch (InterruptedException exc) {
+			System.err.println(exc.getMessage());
+			var timeStamp = new SimpleDateFormat(DATE_FORMAT).format(new Date());
+			System.err.printf(Main.PREFIX, timeStamp, this.title, "Thread stopped before moving file\n");
+			Thread.currentThread().interrupt();
+		}
+	}
 }

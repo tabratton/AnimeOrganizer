@@ -6,7 +6,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.File;
@@ -14,55 +13,53 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Vector;
+import java.util.Arrays;
+import java.util.List;
 
 public class Main {
-  public static ArrayList<String> moved = new ArrayList<>();
-  public static ArrayList<String> detected = new ArrayList<>();
-  public static long id = 1;
-  public static String prefix = "[%s - ID %d] %s thread: %s";
-  public static String regexChar;
+	protected static final String PREFIX = "[%s] %s thread: %s";
+	protected static final List<String> moved = new ArrayList<>();
+	protected static final List<String> detected = new ArrayList<>();
 
-  private static final int WAIT_TIME = 10_000;
+	private static final int WAIT_TIME = 5_000;
 
-  public static void main(String[] args) {
-    if (File.separator.equals("/")) {
-      regexChar = "/";
-    } else {
-      regexChar = "\\\\";
-    }
+	public static void main(String[] args) {
+		String regexChar;
+		if (File.separator.equals("/")) {
+			regexChar = "/";
+		} else {
+			regexChar = "\\\\";
+		}
 
-    Vector<Thread> threads = new Vector<>();
-    StringBuilder sb = new StringBuilder();
+		List<Thread> threads = new ArrayList<>();
+		var sb = new StringBuilder();
+		var directory = System.getProperty("user.dir") + File.separator + "paths.json";
 
-    try {
-      String directory = System.getProperty("user.dir") + File.separator
-          + "paths.json";
-      Files.lines(Paths.get(directory)).forEach(sb::append);
-    } catch (IOException ex) {
-      System.out.println(ex.getMessage());
-    }
+		try (var lines = Files.lines(Paths.get(directory))) {
+			lines.forEach(sb::append);
+		} catch (IOException ex) {
+			System.out.println(ex.getMessage());
+		}
 
-    JSONObject parser = new JSONObject(sb.toString());
-    JSONArray paths = parser.getJSONArray("paths");
+		var parser = new JSONObject(sb.toString());
+		var paths = parser.getJSONArray("paths");
 
-    for (int i = 0; i < paths.length(); i++) {
-      JSONObject currentPath = paths.getJSONObject(i);
-      String source = currentPath.getString("source");
-      String destination = currentPath.getString("destination");
-      boolean placeInSub = currentPath.getBoolean("placeInSub");
+		for (int i = 0; i < paths.length(); i++) {
+			var currentPath = paths.getJSONObject(i);
+			var source = currentPath.getString("source").replaceAll("/", regexChar);
+			var destination = currentPath.getString("destination").replaceAll("/", regexChar);
+			var placeInSub = currentPath.getBoolean("placeInSub");
+			var name = Arrays.stream(source.split(regexChar))
+					.reduce((a, b) -> b)
+					.orElse("");
 
-      source = source.replaceAll("/", regexChar);
-      destination = destination.replaceAll("/", regexChar);
+			var watcher = new Watcher(Paths.get(source), Paths.get(destination), name, placeInSub, WAIT_TIME);
+			threads.add(new Thread(watcher));
+		}
 
-      Watcher watcher = new Watcher(Paths.get(source), Paths.get(destination),
-          placeInSub, WAIT_TIME, id++);
-      threads.add(new Thread(watcher));
-    }
-
-    for (Thread thread : threads) {
-      thread.start();
-    }
-  }
+		for (var thread : threads) {
+			thread.start();
+		}
+	}
 
 }
