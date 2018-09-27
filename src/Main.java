@@ -12,54 +12,65 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 
 public class Main {
-	protected static final String PREFIX = "[%s] %s thread: %s";
-	protected static final List<String> moved = new ArrayList<>();
-	protected static final List<String> detected = new ArrayList<>();
+	public static final String PREFIX = "[%s] %s thread: %s";
+	public static final String DATE_FORMAT = "yyyy.MM.dd.HH.mm.ss";
+  protected static final List<String> MOVED = new ArrayList<>();
+  protected static final List<String> DETECTED = new ArrayList<>();
 
-	private static final int WAIT_TIME = 5_000;
+  private static final int WAIT_TIME = 5_000;
 
-	public static void main(String[] args) {
-		String regexChar;
-		if (File.separator.equals("/")) {
-			regexChar = "/";
-		} else {
-			regexChar = "\\\\";
-		}
+  public static void main(String[] args) throws IOException {
+  	String regexChar;
+    if (File.separator.equals("/")) {
+      regexChar = "/";
+    } else {
+      regexChar = "\\\\";
+    }
 
-		List<Thread> threads = new ArrayList<>();
-		var sb = new StringBuilder();
-		var directory = System.getProperty("user.dir") + File.separator + "paths.json";
+    var threads = new LinkedList<Thread>();
+    var sb = new StringBuilder();
 
-		try (var lines = Files.lines(Paths.get(directory))) {
-			lines.forEach(sb::append);
-		} catch (IOException ex) {
-			System.out.println(ex.getMessage());
-		}
+	  var directory = String.format("%s%spaths.json", System.getProperty("user.dir"), File.separator);
+    try (var lines = Files.lines(Paths.get(directory))) {
+    	lines.forEach(sb::append);
+    }
 
-		var parser = new JSONObject(sb.toString());
-		var paths = parser.getJSONArray("paths");
+    var parser = new JSONObject(sb.toString());
+    var paths = parser.getJSONArray("paths");
 
-		for (int i = 0; i < paths.length(); i++) {
-			var currentPath = paths.getJSONObject(i);
-			var source = currentPath.getString("source").replaceAll("/", regexChar);
-			var destination = currentPath.getString("destination").replaceAll("/", regexChar);
-			var placeInSub = currentPath.getBoolean("placeInSub");
-			var name = Arrays.stream(source.split(regexChar))
-					.reduce((a, b) -> b)
-					.orElse("");
+    for (var i = 0; i < paths.length(); i++) {
+      var currentPath = paths.getJSONObject(i);
+      var source = currentPath.getString("source").replaceAll("/", regexChar);
+      var destination = currentPath.getString("destination").replaceAll("/", regexChar);
+	    var name = currentPath.getString("name");
+      var placeInSub = currentPath.getBoolean("placeInSub");
 
-			var watcher = new Watcher(Paths.get(source), Paths.get(destination), name, placeInSub, WAIT_TIME);
-			threads.add(new Thread(watcher));
-		}
+      Watcher watcher;
 
-		for (var thread : threads) {
-			thread.start();
-		}
-	}
+      if (currentPath.getBoolean("library")) {
+      	watcher = new LibraryWatcher(source, destination, name, WAIT_TIME);
+      } else {
+      	watcher = new NormalWatcher(Paths.get(source), Paths.get(destination), name, placeInSub, WAIT_TIME);
+      }
+
+      threads.add(new Thread(watcher));
+    }
+
+    for (var thread : threads) {
+      thread.start();
+    }
+  }
+
+  public static void printStatusMessage(String name, String message) {
+	  var timeStamp = new SimpleDateFormat(Main.DATE_FORMAT).format(LocalDate.now());
+	  System.out.println(String.format(Main.PREFIX, timeStamp, name, message));
+  }
 
 }
