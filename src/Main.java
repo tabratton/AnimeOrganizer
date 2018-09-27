@@ -12,7 +12,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -68,7 +68,7 @@ public class Main {
 	}
 
 	public static void printStatusMessage(String name, String message) {
-		var timeStamp = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+		var timeStamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
 		System.out.println(String.format(Main.PREFIX, timeStamp, name, message));
 	}
 
