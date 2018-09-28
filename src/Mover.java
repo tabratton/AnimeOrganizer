@@ -7,6 +7,7 @@
  */
 
 import com.dgtlrepublic.anitomyj.AnitomyJ;
+import com.dgtlrepublic.anitomyj.Element;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
@@ -43,7 +44,7 @@ public class Mover implements Runnable {
 	private String getAnimeTitle(String path) {
 		return AnitomyJ.parse(path).stream()
 				.filter(e -> e.getCategory().name().equals("kElementAnimeTitle"))
-				.map(e -> e.getCategory().name())
+				.map(Element::getValue)
 				.findAny()
 				.orElse("");
 	}
