@@ -75,6 +75,7 @@ public class Mover implements Runnable {
           throw new IOException();
         }
 
+        Main.printStatusMessage(this.title, "Starting copy...");
         if (isDirectory) {
           FileUtils.copyDirectory(source.toFile(), destination.toFile());
         } else {
@@ -82,7 +83,7 @@ public class Mover implements Runnable {
         }
 
       } catch (NoSuchFileException ex) {
-        Main.printStatusMessage(this.title, String.format("%s  has been deleted or cannot be found, stopping move"
+        Main.printStatusMessage(this.title, String.format("%s has been deleted or cannot be found, stopping move"
             + " thread", filename));
         return;
       } catch (IOException ex) {
@@ -111,8 +112,7 @@ public class Mover implements Runnable {
           || Arrays.stream(files)
           .filter(File::isDirectory)
           .map(this::isDownloading)
-          .reduce((a, b) -> a || b)
-          .orElse(true);
+          .reduce(false, (a, b) -> a || b);
     } else {
       return new File(current + ".lftp-pget-status").exists();
     }
